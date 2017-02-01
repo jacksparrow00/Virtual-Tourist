@@ -7,7 +7,7 @@
 //
 
 import Foundation
-extension FlickrAPI{
+extension FlickrAPI{                //constants for flickr api
     struct Flickr{
         static let APIScheme = "https"
         static let APIHost = "api.flickr.com"

@@ -13,12 +13,12 @@ import CoreData
 class CoreDataCollectionViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource{
     
     var fetchedResultsController : NSFetchedResultsController<NSFetchRequestResult>? {
-        didSet {
+        didSet {// Whenever the frc changes, we execute the search
             fetchedResultsController?.delegate = self
             executeSearch()
         }
     }
-    
+    // MARK: Initializers
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
@@ -46,7 +46,7 @@ extension CoreDataCollectionViewController{
     }
     
 }
-
+// MARK: - CoreDataTableViewController (Fetches)
 extension CoreDataCollectionViewController{
     func executeSearch(){
         if let fc = fetchedResultsController{
@@ -67,8 +67,8 @@ extension CoreDataCollectionViewController: NSFetchedResultsControllerDelegate{
     func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
         fatalError("This must be implemented by vc.")
     }
-    
-    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         fatalError("This must be implemented by vc.")
     }
 }

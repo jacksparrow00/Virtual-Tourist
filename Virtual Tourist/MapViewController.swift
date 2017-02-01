@@ -26,9 +26,9 @@ extension UIViewController{
 
 class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsControllerDelegate {
     
-    var pins = [Pin]()
-    var selectedPin: Pin!
-    var editMode = false
+    var pins = [Pin]()              //to get all the pins stored in core data
+    var selectedPin: Pin!           //to get the currently selected pin and it's properties
+    var editMode = false            //to determine the pin delete or pin drop mode of the app
     let appDelegate = AppDelegate()
     
     @IBOutlet weak var mapView: MKMapView!
@@ -50,27 +50,27 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
             print("Couldn't fetch the stored pins")
         }
         
-        mapView.addAnnotations(pins)
+        mapView.addAnnotations(pins)            //add annotations in the map for pins stored in core data
         
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(addPin))
-        longPress.minimumPressDuration = 1.5
-        mapView.addGestureRecognizer(longPress)
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(addPin))           //add long press gesture recognizer
+        longPress.minimumPressDuration = 1.5            //define long press duration
+        mapView.addGestureRecognizer(longPress)         //add the gesture to mapView
     }
     
     @IBAction func editButton(_ sender: Any) {
         
-        if editMode{
+        if editMode{                            //for pin drop mode of the app
             editMode = false
             Edit.title = "Edit"
             infoLabel.text = "Create new Pin or Select Pin"
             
             do{
-                try appDelegate.stack.saveContext()
+                try appDelegate.stack.saveContext()                 //saving context in core data
             }catch{
                 print("Couldn't save the view.")
             }
         } else{
-            editMode = true
+            editMode = true                     //for pin delete mode of the app
             Edit.title = "Done"
             infoLabel.text = "Select the pins to delete"
         }
@@ -78,28 +78,35 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
     
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         mapView.deselectAnnotation(view.annotation, animated: true)
+        let mapPinFetch: NSFetchRequest<Pin> = Pin.fetchRequest()               //creating a pin fetch request
+        print("selecting a pin")                //for debug purposes
         
-        let pinFetchRequest : NSFetchRequest<Pin> = Pin.fetchRequest()
-        pinFetchRequest.predicate = NSPredicate(format: "(%K = %@) AND (%K = %@)", #keyPath(Pin.latitude), #keyPath(Pin.longitude))
+        mapPinFetch.predicate = NSPredicate(format: "(%K = %@) AND (%K = %@)", #keyPath(Pin.latitude), #keyPath(Pin.longitude))             //constrain the selection of objects from core data for the selected pin
+        //NS Predicate Syntax for getting the pins on Latitude & longitude respectively
+        // Took help for NSPRedicate Syntax from http://nshipster.com/nspredicate/ , https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/Predicates/Articles/pSyntax.html
         
         var resultPin = [Pin]()
         
+        
+        
+        
+        //MARK: I am getting error in the following code block. But the console isn't showing any error. I am confused. I have implemented this very same code in viewDidLoad and it compiles there. But it isn't compiling here. Nor giving any errors. Any help will be appreciated.
         do{
-            resultPin = try appDelegate.stack.context.fetch(pinFetchRequest)
+            resultPin = try appDelegate.stack.context.fetch(mapPinFetch)
         }catch{
             print("Couldn't get the results Pins from NSPredicate")
         }
         
-        if editMode{
+        if editMode{                    //for delete pin mode of app
             if resultPin.count > 0{
-                mapView.removeAnnotation(resultPin.first!)
+                mapView.removeAnnotation(resultPin.first!)              //remove the selected pin
 
                 
-                appDelegate.stack.context.delete(resultPin.first!)
+                appDelegate.stack.context.delete(resultPin.first!)          //remove the pin from core data
                 print("Pin removed from CoreData")
                 
                 do{
-                    try appDelegate.stack.saveContext()
+                    try appDelegate.stack.saveContext()         //save the core data context
                 }catch{
                     print("Couldn't save. Please try again.")
                 }
@@ -108,12 +115,12 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
             }
         }else{
             if resultPin.count > 0{
-                selectedPin = resultPin.first
+                selectedPin = resultPin.first               //get the selected pin
                 
-                let photosVC = self.storyboard?.instantiateViewController(withIdentifier: "collectionVC") as! CollectionVC
-                photosVC.selectedPin = selectedPin
+                let photosVC = self.storyboard?.instantiateViewController(withIdentifier: "collectionVC") as! CollectionViewController              //instantiate the collectionViewController
+                photosVC.selectedPin = selectedPin              //send the selected pin info to the collectionview controller
                 performUIUpdatesOnMain {
-                    self.navigationController?.pushViewController(photosVC, animated: true)
+                    self.navigationController?.pushViewController(photosVC, animated: true) //bring the next view controller when the pin is clicked
                 }
                 
             }else{
@@ -128,16 +135,17 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
             
             let gesture = gesture.location(in: mapView)         //http://stackoverflow.com/questions/30858360/adding-a-pin-annotation-to-a-map-view-on-a-long-press-in-swift
             var coordinates = mapView.convert(gesture, toCoordinateFrom: mapView)
+            //putting and identifying coordinates from mapview
             
             let newPin = Pin(context: appDelegate.stack.context)
-            newPin.latitude = coordinates.latitude
+            newPin.latitude = coordinates.latitude          //initializing pin properties
             newPin.longitude = coordinates.longitude
             
-            mapView.addAnnotation(newPin)
+            mapView.addAnnotation(newPin)               //adding the pin on the map
             
             infoLabel.text = "Select the pin to get photos."
             
-            FlickrAPI.sharedInstance().search(pin: newPin, managedContext: appDelegate.stack.context, completionHandlerForSearch: { (data, error) in
+            FlickrAPI.sharedInstance().search(pin: newPin, managedContext: appDelegate.stack.context, completionHandlerForSearch: { (data, error) in            //starting the function to get data from Parse api as soon as pin is dropped
                 guard error == nil else{
                     self.displayAlert(error: error)
                     return
@@ -145,7 +153,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
             })
             
             do{
-                try appDelegate.stack.saveContext()
+                try appDelegate.stack.saveContext()             //saving context in core data
             }catch{
                 print("Couldn't save. Try again")
             }
@@ -154,7 +162,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, NSFetchedResultsCo
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "NextVC"{
-            let collectionVC = segue.destination as! CollectionVC
+            let collectionVC = segue.destination as! CollectionViewController
             collectionVC.selectedPin = selectedPin
         }
     }

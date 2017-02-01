@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 class FlickrAPI{
     
-    func search(pin selectedPin : Pin, managedContext coreDataContext: NSManagedObjectContext,completionHandlerForSearch: @escaping(_ data: AnyObject?,_ error: String?) -> Void){
+    func search(pin selectedPin : Pin, managedContext coreDataContext: NSManagedObjectContext,completionHandlerForSearch: @escaping(_ data: AnyObject?,_ error: String?) -> Void){          //give url parameters for flickr api for flickr.photos.search method
         let methodParameters = [
             FlickrParameterKeys.Method: FlickrParameterValues.SearchMethod,
             FlickrParameterKeys.APIKey: FlickrParameterValues.APIKey,
@@ -24,7 +24,7 @@ class FlickrAPI{
         displayImageFromFlickr(methodParameters: methodParameters as [String : AnyObject],coreDataContext: coreDataContext,completionHandler: completionHandlerForSearch)
     }
     
-     func bboxString(latitude: Double, longitude: Double) -> String{
+     func bboxString(latitude: Double, longitude: Double) -> String{    //give bbox parameters and return string containing boundaries
         let minimumLong = max(longitude - Flickr.SearchBBoxHalfWidth, Flickr.SearchLonRange.0)
         let minimumLat = max(latitude - Flickr.SearchBBoxHalfHeight, Flickr.SearchLatRange.0)
         let maximumLong = min(longitude + Flickr.SearchBBoxHalfWidth, Flickr.SearchLonRange.1)
@@ -34,24 +34,24 @@ class FlickrAPI{
     
     func displayImageFromFlickr(methodParameters: [String:AnyObject],coreDataContext: NSManagedObjectContext,completionHandler: @escaping(_ data:AnyObject?,_ error: String?) -> Void){
         let request = URLRequest(url: flickrURLFromParameters(parameters: methodParameters))
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in       //start urlsession task
             
-            guard error == nil else{
+            guard error == nil else{            //error handling
                 completionHandler(nil,"There was an error from your request \(error?.localizedDescription)")
                 return
             }
             
-            guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode >= 200 && statusCode < 300 else{
+            guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode >= 200 && statusCode < 300 else{          //error handling
                 completionHandler(nil,"Your request returned a status other than 2xx")
                 return
             }
             
-            guard let data = data else{
+            guard let data = data else{         //error handling
                 completionHandler(nil,"No data was returned by the request")
                 return
             }
             
-            let parsedResult: [String:AnyObject]!
+            let parsedResult: [String:AnyObject]!               //parse into json
             do{
                 parsedResult = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! [String:AnyObject]
             }catch{
@@ -59,22 +59,22 @@ class FlickrAPI{
                 return
             }
             
-            guard let stat = parsedResult[FlickrResponseKeys.Status] as? String, stat == FlickrResponseValues.OKStatus else{
+            guard let stat = parsedResult[FlickrResponseKeys.Status] as? String, stat == FlickrResponseValues.OKStatus else{            //find status key in parsed data
                 completionHandler(nil,"Flickr API returned an error. See error code and message in \(parsedResult)")
                 return
             }
             
-            guard let photosDictionary = parsedResult[FlickrResponseKeys.Photos] as? [String:AnyObject] else{
+            guard let photosDictionary = parsedResult[FlickrResponseKeys.Photos] as? [String:AnyObject] else{               //find photos key in parsed data
                 completionHandler(nil,"Cannot find key \(FlickrResponseKeys.Photos) in \(parsedResult)")
                 return
             }
             
-            guard let totalPages = photosDictionary[FlickrResponseKeys.Pages] as? Int else{
+            guard let totalPages = photosDictionary[FlickrResponseKeys.Pages] as? Int else{     //find pages key in parsed data
                 completionHandler(nil,"Cannot find key \(FlickrResponseKeys.Pages)")
                 return
             }
             let pageLimit = min(totalPages, 40)
-            let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1
+            let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1         //get a random number for getting random page of results
             self.displayImageFromFlickrBySearch(methodParameters, withPageNumber: randomPage,coreDataContext: coreDataContext,completionHandlerForPage: completionHandler)
         }
         task.resume()
@@ -169,8 +169,8 @@ class FlickrAPI{
     }
     
     func downloadImage(imagePath: String, completionHandlerForDownload: @escaping(_ data: NSData?, _ error: String?) -> Void){
-        let task = URLSession.shared.dataTask(with: URL(string: imagePath)!) { (data, response, error) in
-            guard error == nil else{
+        let task = URLSession.shared.dataTask(with: URL(string: imagePath)!) { (data, response, error) in               //start the task to download image
+            guard error == nil else{            //error handling
                 completionHandlerForDownload(nil, "Your request returned an error: \(error?.localizedDescription)")
                 return
             }
@@ -179,7 +179,7 @@ class FlickrAPI{
         task.resume()
     }
     
-    func getURLForImage(urlString: String, completionHandlerForGetURL: @escaping(_ data: Data?, _ error: String?) -> Void){
+    /*func getURLForImage(urlString: String, completionHandlerForGetURL: @escaping(_ data: Data?, _ error: String?) -> Void){
         guard let url = URL(string: urlString) else{
             completionHandlerForGetURL(nil,"The image url couldn't be resolved")
             return
@@ -190,26 +190,26 @@ class FlickrAPI{
             return
         }
         completionHandlerForGetURL(imageData, nil)
-    }
+    }*/
 
     
     private func flickrURLFromParameters(parameters: [String:AnyObject]) -> URL{
         var components = URLComponents()
-        components.scheme = Flickr.APIScheme
-        components.host = Flickr.APIHost
-        components.path = Flickr.APIPath
+        components.scheme = Flickr.APIScheme            //define url scheme
+        components.host = Flickr.APIHost                //define url host
+        components.path = Flickr.APIPath                //define host's path
         components.queryItems = [URLQueryItem]()
         
-        for (key,value) in parameters{
+        for (key,value) in parameters{                  //insert the query items into the url
             let queryItem = URLQueryItem(name: key, value: "\(value)")
             components.queryItems?.append(queryItem)
         }
-        if  components.url == nil
+        if  components.url == nil               //error handling
         {
             print("Error in URL Creation")
         }
         
-        guard let urlrequested = components.url else {
+        guard let urlrequested = components.url else {          //place holder image call
             print("Error in URL Creation")
             let url2 = NSURL(string: "https://www.flickr.com/photos/flickr/30709520093/in/feed")
             return url2 as! URL
@@ -217,7 +217,7 @@ class FlickrAPI{
         return urlrequested
     }
     
-    class func sharedInstance() -> FlickrAPI{
+    class func sharedInstance() -> FlickrAPI{                   //creating a shared instance
         struct Singleton{
             static var sharedInstance = FlickrAPI()
         }
